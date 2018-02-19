@@ -44,8 +44,7 @@ switch ID
         CLIMB       = E; % Time spent climbing [hrs]
         V_climb     = V_climb * 1.68781; % [FPS] from knots
         K           = 1/(pi*AR*e); 
-        TW          =  550*N_prop/V_climb / WP_cruise; % to T/W, can use WP cruise cause what engine sees
-        CL          = 1/(2*K) *(-TW + sqrt(TW^2+12*C_D0*K));
+        CL          =   Clmax_to/1.44; % Hamburg chapter 5, consistent with prelim
         C           =   bsfc * V_climb / 550 / N_prop; % Raymer 3.4.3, [lb/(lb-hr)] <- thrust specific      
         LDCL        = CL / ((C_D0 + (CL^2 / (3.14*AR*e))));
         beta = 1/(exp((CLIMB*C)/LDCL));
