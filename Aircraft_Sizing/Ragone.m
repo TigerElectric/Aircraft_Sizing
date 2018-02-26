@@ -17,6 +17,7 @@ function    [rho_P, rho_E]   =   Ragone(TAU, SHOW)
     d           =   -0.001804;
     RAGONE      =   a.*exp(b.*xrag) + c.*exp(d.*xrag); % Fit found elsewhere
     if SHOW == 1
+        figure
         plot(xrag,RAGONE)
         xlim([0 15000])
         ylim([0 200])

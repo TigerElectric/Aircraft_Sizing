@@ -1,3 +1,4 @@
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Bernardo Pacini                                                       %%
 %% Hybrid-Electric General Aviation Aircraft                             %%
@@ -7,11 +8,11 @@
 %% Dependencies:                                                         %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function  [HPW_takeoff_ws, HPW_climb_ws, HPW_cruise_ws, HPW_turning_max_ws, ...
-    HPW_turning_min_ws, HPW_endurance_ws, wing_loading] = aircraft_carpetplot_power(V_cruise, AR, eta, WP_guess, WS_guess,...
+    HPW_turning_min_ws, HPW_endurance_ws, W_S, HPW_match] = aircraft_carpetplot_power(V_cruise, AR, eta,...
     altitude_ci, altitude_fi, altitude_climbi, V_approach, ...
     V_stall, Clmax_to, Clmax_climb, Clmax_land, L_takeoff, L_landing, V_climb, ...
-    rate_climb, theta_app, C_D0, gamma, g, ...
-    carpet_x_lim, carpet_y_lim, LD, LDC, n_max, n_min, k, e)
+    rate_climb, C_D0, g, ...
+    carpet_x_lim, carpet_y_lim, n_max, n_min)
 
 altitude_c = altitude_ci*0.3048;
 altitude_climb = altitude_climbi*0.3048;
@@ -84,8 +85,11 @@ HPW_climb = @(ws) (550*eta)*(1/(sind(gamma) + (C_D0/(.5*Clmax_to))))...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Cruise-performance DONE
 V_cruise = V_cruise * 1.68781; %convert to ft/s
-HPW_cruise = @(ws) 550./(0.5*(airDens_ci/g)*V_cruise^3*C_D0./ws ...
-     + k /(0.5*(airDens_ci/g)*V_cruise) .* ws);
+HPW_cruise = @(ws) (550./(0.5*(airDens_ci/g)*V_cruise^3*C_D0./ws ...
+     + k /(0.5*(airDens_ci/g)*V_cruise) .* ws))/1.016;
+    % I added a /1.016 to the whole thing to account for the power draw
+    % from the electrical systems based on a piper plane. Sourcing is in
+    % the weights folder in the drive
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Turning Flight DONE
@@ -117,17 +121,20 @@ line([WS_stall WS_stall],get(hax,'YLim'),'Color',[1 1 0]);
 line([WS_landing WS_landing], get(hax,'YLim'),'Color',[0 1 1]);
 alpha(0.5)
 
-% Takeoff
-area(WS, HPW_takeoff(WS), carpet_y_lim(2), 'FaceColor', 'b');
-alpha(0.5); % transparency
-% Climb
-area(WS, HPW_climb(WS), carpet_y_lim(2), 'FaceColor', 'r');
-alpha(0.5); % transparency
-% Cruise
-area(WS, HPW_cruise(WS), carpet_y_lim(2), 'FaceColor', 'g');
-alpha(0.5); % transparency
+% % Takeoff
+% area(WS, HPW_takeoff(WS), carpet_y_lim(2), 'FaceColor', 'b');
+% alpha(0.5); % transparency
+% % Climb
+% area(WS, HPW_climb(WS), carpet_y_lim(2), 'FaceColor', 'r');
+% alpha(0.5); % transparency
 % Endurance
 area(WS, HPW_endurance(WS), carpet_y_lim(2), 'FaceColor', 'm');
+alpha(0.5); % transparency
+% % Min load factor
+% area(WS, HPW_turning_min(WS), 'FaceColor', 'r');
+% alpha(0.5); % transparency
+% Cruise
+area(WS, HPW_cruise(WS), carpet_y_lim(2), 'FaceColor', 'g');
 alpha(0.5); % transparency
 % Load Factors
 plot(WS, HPW_turning_max(WS), 'r-.');
@@ -139,6 +146,7 @@ xlabel('Wing Loading [W_g/S], lb/ft^2');
 ylabel('Thrust Loading [T_0/W_g]');
 xlim(carpet_x_lim)
 ylim(carpet_y_lim)
+
 
 % Takeof
 plot(WS, HPW_takeoff(WS), 'b');
@@ -153,8 +161,8 @@ alpha(0.5); % transparency
 title('Constraint Plane (W/P - W/S)');
 xlabel('Wing Loading [W_g/S], lb/ft^2');
 ylabel('Loading Power [W_g/P_{hp}]');
-legend('Stall', 'Landing','Takeoff','Climb','Cruise','Endurance',...
-    'n_{max}','n_{min}');
+legend('Stall', 'Landing','Endurance', 'Cruise',...
+    'n_{max}','n_{min}','Takeoff','Climb');
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -170,10 +178,12 @@ power_loading = str2num(answer{1});
 wing_loading = str2num(answer{2});
 plot(wing_loading,power_loading,'b.', 'MarkerSize', 20);
 
+W_S                = wing_loading;
 HPW_takeoff_ws     = HPW_takeoff(wing_loading);
 HPW_climb_ws       = HPW_climb(wing_loading);
 HPW_cruise_ws      = HPW_cruise(wing_loading);
 HPW_turning_max_ws = HPW_turning_max(wing_loading);   
 HPW_turning_min_ws = HPW_turning_min(wing_loading);
 HPW_endurance_ws   = HPW_endurance(wing_loading);
+HPW_match          = power_loading; % Account for Electrical Systems
 end

@@ -10,13 +10,12 @@
 
 % R (nmi), E (hrs), V (knots), bsfc (lbfuel/hr/Hp), Climb_time (hrs)
 function beta = calculate_beta_hybrid(ID, R, E, V_cruise, V_stall, V_climb,...
-    AR, e, C_D0, Clmax_to, bsfc, LDmax, N_prop, WP_cruise, PI_beta)
+    AR, e, C_D0, Clmax_to, bsfc, LDC, LDL, N_prop, WP_cruise, PI_beta)
 
-LDC                 =   LDmax; % Raymer 41, cruise is at max L/D
-LDL                 =   LDmax * 0.866; % Raymer 41, loiter is at 86.6% of max L/D
+% LDC                 =   LDmax; % Raymer 41, cruise is at max L/D
+% LDL                 =   LDmax * 0.866; % Raymer 41, loiter is at 86.6% of max L/D
 V_prop_conversion =   V_cruise * 1.68781; % Feet / second from knots
 C_cruise  =   bsfc * V_prop_conversion / 550 / N_prop; % Raymer 3.4.3, [lb/(lb-hr)] <- thrust specific
-TW_cruise          =  550*N_prop/V_prop_conversion / WP_cruise;
 
 switch ID
     
@@ -43,9 +42,7 @@ switch ID
     case 'climb' % assume climb clean, no flaps
         CLIMB       = E; % Time spent climbing [hrs]
         V_climb     = V_climb * 1.68781; % [FPS] from knots
-        K           = 1/(pi*AR*e); 
-        TW          =  550*N_prop/V_climb / WP_cruise; % to T/W, can use WP cruise cause what engine sees
-        CL          = 1/(2*K) *(-TW + sqrt(TW^2+12*C_D0*K));
+        CL          =   Clmax_to/1.44;
         C           =   bsfc * V_climb / 550 / N_prop; % Raymer 3.4.3, [lb/(lb-hr)] <- thrust specific      
         LDCL        = CL / ((C_D0 + (CL^2 / (3.14*AR*e))));
         beta = 1/(exp((CLIMB*C)/LDCL));
@@ -64,7 +61,7 @@ switch ID
     
     case 'descent'
         WP_idle =   WP_cruise / 0.2; % Diesel (conservative) estimate assumes 600rpm idle
-        DESC      =   E; % Time spent landing [hrs]
+        DESC    =   E; % Time spent landing [hrs]
         beta    =   1 - (bsfc * DESC)/(WP_idle * PI_beta); % [hp/lb][lb/(hp*hr)][hr]
         
     case 'land'

@@ -13,10 +13,10 @@
 
 % MTOW[lb], R[nmi], V_cruise[Kts], V_stall[Kts], L_takeoff[ft],
 % fpm_climb[ft/min], cruise_alt[ft], t_emergency_guess[Hrs]
-function [W_TO, W_fuel, W_batt, W_empty, W_pay, W_batt_TO, W_batt_CM, W_batt_EM, t_EM] = ...
-    Weight_est(MTOW, bsfc,AR, C_D0, Clmax_to, LDmax, N_prop, WP_cruise,...
-    WP_climb, WP_TO, WP_match, WS, weight_max, R, V_cruise, V_stall, L_takeoff,...
-    fpm_climb, cruise_alt, t_emergency_guess, passengers, crew, SHOW)
+function [W_TO, W_fuel, W_batt, W_empty, W_pay, W_batt_TO, W_batt_CM, W_batt_EM, t_EM, TBat] = ...
+    Weight_est(MTOW, bsfc,AR, C_D0, Clmax_to, LDC, LDL, N_prop, WP_cruise,...
+    WP_climb, WP_TO, WP_turn, WS, weight_max, R, V_cruise, V_stall, L_takeoff,...
+    fpm_climb, cruise_alt, t_emergency_guess, passengers, crew,loiter_dur, SHOW)
 %% Old Guesses from Standalone (non-functional) version
 % SHOW      =   0;      % SWITCH to show design points on non-log Ragone
 % %%  STARRED ***** should be fed in as function from Prelim_Sizing
@@ -51,7 +51,7 @@ V_climb     =   1.2*V_stall;                            % [Kts] Raymer 17.8.2
 e           =   1.78*(1-0.045*AR^(0.68)) - 0.64;        % Raymer or Stengel
 t_TO        =   L_takeoff/(V_climb*1.68781*0.7)/3600;   % rough takeoff time [hrs]
 t_climb     =   cruise_alt / fpm_climb / 60;            % [Hrs]
-WP          =   min([WP_cruise, WP_climb, WP_TO, WP_match]); % For Structural Considerations
+WP          =   min([WP_cruise, WP_climb, WP_TO, WP_turn]); % For Structural Considerations
 
 % TAU = Vector of Discharge Times (vector can be any length)
 TAU             =   [t_TO t_climb t_emergency_guess];         % [Hrs]
@@ -60,11 +60,13 @@ PDens_HP        =   PDens*0.000608277;                  % [Hp/lb]
 EDens_HP        =   EDens*0.000608277;                  % [Hp-hr/lb]
 T = table(TAU', PDens, EDens); 
 T.Properties.VariableNames = {'Time' 'WperKg' 'WhrperKg'};
-% disp(T)
+T.Properties.RowNames = {'Take-Off' 'Climb' 'Emergency'};
+disp(T)
 T2 = table(TAU', PDens_HP, EDens_HP);
 T2.Properties.VariableNames = {'Time' 'HPperLB' 'HPHRperLB'};
-% disp(T2)
-
+T2.Properties.RowNames = {'Take-Off' 'Climb' 'Emergency'};
+disp(T2)
+TBat = T2;
 %% Iterate Emergency Range Down
 W_TO    =   weight_max; % Initial High Guess
 while (W_TO > MTOW)
@@ -74,32 +76,32 @@ PI_beta     =   1;                % Running total BETA (Wi/W0)
 
 % WARM-UP: Assumptions: 15 min
 Beta_WU     = calculate_beta_hybrid('warmup', R, 15/60, V_cruise, V_stall, V_climb,...
-    AR, e, C_D0, Clmax_to, bsfc, LDmax, N_prop, WP_cruise, PI_beta);
+    AR, e, C_D0, Clmax_to, bsfc, LDC, LDL, N_prop, WP_cruise, PI_beta);
 PI_beta     = Beta_WU;
 
 % TAKE-OFF: 
 Beta_TO     = calculate_beta_hybrid('takeoff', R, t_TO, V_cruise, V_stall, V_climb,...
-    AR, e, C_D0, Clmax_to, bsfc, LDmax, N_prop, WP_cruise, PI_beta);
+    AR, e, C_D0, Clmax_to, bsfc, LDC, LDL, N_prop, WP_cruise, PI_beta);
 PI_beta     = Beta_TO*Beta_WU;
 
 % CLIMB: Assumptions: Climb rate is constant
 Beta_climb  = calculate_beta_hybrid('climb', R, t_climb, V_cruise, V_stall, V_climb,...
-    AR, e, C_D0, Clmax_to, bsfc, LDmax, N_prop, WP_cruise, PI_beta);
+    AR, e, C_D0, Clmax_to, bsfc, LDC, LDL, N_prop, WP_cruise, PI_beta);
 PI_beta     = Beta_WU*Beta_TO*Beta_climb;
 
 % CRUISE: 
 Beta_cruise = calculate_beta_hybrid('cruise', R, 0, V_cruise, V_stall, V_climb,...
-    AR, e, C_D0, Clmax_to, bsfc, LDmax, N_prop, WP_cruise, PI_beta);
+    AR, e, C_D0, Clmax_to, bsfc, LDC, LDL, N_prop, WP_cruise, PI_beta);
 PI_beta     = Beta_WU*Beta_TO*Beta_climb*Beta_cruise;
 
 % LOITER: Assumptions: Propeller Efficiency is 0.7 as per Raymer
-Beta_loiter = calculate_beta_hybrid('loiter', R, 0.75, V_cruise, V_stall, V_climb,...
-    AR, e, C_D0, Clmax_to, bsfc, LDmax, 0.7, WP_cruise, PI_beta);
+Beta_loiter = calculate_beta_hybrid('loiter', R, loiter_dur, V_cruise, V_stall, V_climb,...
+    AR, e, C_D0, Clmax_to, bsfc, LDC, LDL, 0.7, WP_cruise, PI_beta);
 PI_beta     = Beta_WU*Beta_TO*Beta_climb*Beta_cruise*Beta_loiter;
 
 % LAND: Assumptions: Approximately 5 min for landing
 Beta_land   = calculate_beta_hybrid('land', R, 5/60, V_cruise, V_stall, V_climb,...
-    AR, e, C_D0, Clmax_to, bsfc, LDmax, N_prop, WP_cruise, PI_beta);
+    AR, e, C_D0, Clmax_to, bsfc, LDC, LDL, N_prop, WP_cruise, PI_beta);
 PI_beta     = Beta_WU*Beta_TO*Beta_climb*Beta_cruise*Beta_loiter*Beta_land;
 
 % FUEL WEIGHT FRACTION 
@@ -116,7 +118,7 @@ if (WP_cruise > WP_TO)
     PTOB_W0     =   1/WP_TO - 1/WP_cruise;  %   Ratio of TO Power Supplied by Battery to Weight
     WBW0_TO     =   PTOB_W0 / PDens_HP(1);  
 else
-    disp('Take-Off Power is Less Than Cruise, so No Takeoff Battery')
+%     disp('Take-Off Power is Less Than Cruise, so No Takeoff Battery')
     WBW0_TO     =   0;                      % Case where cruise is more limiting
 end
 
@@ -125,7 +127,7 @@ if (WP_cruise > WP_climb)
     PCMB_W0     =   1/WP_climb - 1/WP_cruise;% Ratio of Climb Power Supplied by Battery to Weight
     WBW0_CM     =   PCMB_W0 / PDens_HP(2);  
 else
-    disp('Climb Power is Less Than Cruise, so No Climb Battery')
+%     disp('Climb Power is Less Than Cruise, so No Climb Battery')
     WBW0_CM     =   0;                      % Case where cruise is more limiting
 end
 
@@ -133,10 +135,10 @@ end
 WB_W0   =   WBW0_EM + WBW0_TO + WBW0_CM;    % Total Weight Fraction of Batteries
 
 %% Empty Weight Fraction
-% From Raymer 6.3.3 for GA Single-Engine
+% From Raymer 6.3.3 for GA Twin-Engine
 a   =   -0.25;
 b   =   1.18;
-A   =   3.26;
+A   =   2.36;
 c1  =   -0.20;
 c2  =   0.08;
 c3  =   0.05;
@@ -160,7 +162,7 @@ catch
     error('Aircraft weight not within specified range');
 end
 t_emergency_final = t_emergency_guess;
-t_emergency_guess = t_emergency_guess - 1/60;   % Take a minute off until becomes FAR 23
+t_emergency_guess = t_emergency_guess - 30/60/60;   % Take 30s off until becomes FAR 23
 end
 t_EM   =   t_emergency_final*60;
 W_fuel              =   W_TO*Wf_W0;
