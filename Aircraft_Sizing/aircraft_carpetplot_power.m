@@ -38,7 +38,7 @@ altitude_l = altitude_li*0.3048; % Loiter/Endurace
 [airDens_li, airPres_li, temp_li, soundSpeed_li] = ...
     convert_to_imperial(airDens_l, airPres_l, temp_l, soundSpeed_l);
 
-sigma = airDens_fi/airDens_sli;
+sigma = airDens_li/airDens_sli;
 V_stall = V_stall * 1.68781; %convert to ft/s
 dHdt = rate_climb/60; % ft/s
 V_climb = V_climb*1.68781; % ft/s
