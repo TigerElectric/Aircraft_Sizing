@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Bernardo Pacini                                                       %%
+%% Bernardo Pacini & Nathan Wei                                          %%
 %% MAE 332 - Aircraft Design                                             %%
 %% Preliminary Design Calculations                                       %%
 %% 7 March 2017  
@@ -10,7 +10,7 @@
 
 % R (nmi), E (hrs), V (knots), bsfc (lbfuel/hr/Hp), Climb_time (hrs)
 function beta = calculate_beta_hybrid(ID, R, E, V_cruise, V_stall, V_climb,...
-    AR, e, C_D0, Clmax_to, bsfc, LDC, LDL, N_prop, WP_cruise, PI_beta, V_loiter)
+    AR, e, C_D0, Clmax_to, bsfc, LDC, LDL, N_prop, WP_cruise, PI_beta)
 
 % LDC                 =   LDmax; % Raymer 41, cruise is at max L/D
 % LDL                 =   LDmax * 0.866; % Raymer 41, loiter is at 86.6% of max L/D
@@ -42,7 +42,12 @@ switch ID
     case 'climb' % assume climb clean, no flaps
         CLIMB       = E; % Time spent climbing [hrs]
         V_climb     = V_climb * 1.68781; % [FPS] from knots
+<<<<<<< HEAD
         CL          =   Clmax_to/1.44;
+=======
+        K           = 1/(pi*AR*e); 
+        CL          =   Clmax_to/1.44; % Hamburg chapter 5, consistent with prelim
+>>>>>>> origin/master
         C           =   bsfc * V_climb / 550 / N_prop; % Raymer 3.4.3, [lb/(lb-hr)] <- thrust specific      
         LDCL        = CL / ((C_D0 + (CL^2 / (3.14*AR*e))));
         beta = 1/(exp((CLIMB*C)/LDCL));
@@ -53,9 +58,10 @@ switch ID
  
         beta = 1/(exp(R*((C_cruise/V_cruise))/(LDC)));
         
-    case 'loiter'      
-        V   =   V_loiter * 1.68781;
-        C  =   bsfc * V / 550 / 0.7; % drop N_prop to 0.7 (Raymer)
+    case 'loiter'
+        % Use cruise speed for conservative estimate 
+        
+        C  =   bsfc * V_prop_conversion / 550 / 0.7; % drop N_prop to 0.7 (Raymer)
         beta = 1/(exp((E*C)/LDL));
     
     case 'descent'

@@ -8,22 +8,21 @@
 %% Dependencies:                                                         %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function  [HPW_takeoff_ws, HPW_climb_ws, HPW_cruise_ws, HPW_turning_max_ws, ...
-    HPW_turning_min_ws, HPW_endurance_ws, W_S, HPW_match] = aircraft_carpetplot_power(V_cruise, AR, eta,...
-    altitude_ci, altitude_fi, altitude_climbi,altitude_li, V_approach, ...
+    HPW_turning_min_ws, HPW_endurance_ws, W_S, HPW_match] = ...
+    aircraft_carpetplot_power(V_cruise, AR, eta,...
+    altitude_ci, altitude_fi, altitude_climbi, V_approach, ...
     V_stall, Clmax_to, Clmax_climb, Clmax_land, L_takeoff, L_landing, V_climb, ...
     rate_climb, C_D0, g, ...
-    carpet_x_lim, carpet_y_lim, n_max, n_min, LDL, TOP)
+    carpet_x_lim, carpet_y_lim, n_max, n_min)
 
 altitude_c = altitude_ci*0.3048;
 altitude_climb = altitude_climbi*0.3048;
 altitude_f = altitude_fi*0.3048;
-altitude_l = altitude_li*0.3048; % Loiter/Endurace
 [airDens_c, airPres_c, temp_c, soundSpeed_c] = Atmos(altitude_c); % SI
 [airDens_f, airPres_f, temp_f, soundSpeed_f] = Atmos(altitude_f);
 [airDens_climb, airPres_climb, temp_climb, soundSpeed_climb] = ...
     Atmos(altitude_climb);
 [airDens_sl, airPres_sl, temp_sl, soundSpeed_sl] = Atmos(0);
-[airDens_l, airPres_l, temp_l, soundSpeed_l] = Atmos(altitude_l);
 
 % Convert values from SI to Imperial
 [airDens_ci, airPres_ci, temp_ci, soundSpeed_ci] = ...
@@ -34,9 +33,7 @@ altitude_l = altitude_li*0.3048; % Loiter/Endurace
     convert_to_imperial(airDens_climb, airPres_climb, temp_climb, ...
     soundSpeed_climb);
 [airDens_sli, airPres_sli, temp_sli, soundSpeed_sli] = ...
-    convert_to_imperial(airDens_sl, airPres_sl, temp_sl, soundSpeed_sl)
-[airDens_li, airPres_li, temp_li, soundSpeed_li] = ...
-    convert_to_imperial(airDens_l, airPres_l, temp_l, soundSpeed_l);
+    convert_to_imperial(airDens_sl, airPres_sl, temp_sl, soundSpeed_sl);
 
 sigma = airDens_fi/airDens_sli;
 V_stall = V_stall * 1.68781; %convert to ft/s
@@ -56,13 +53,12 @@ hold on;
 % Plotted later for cosmetic reasons
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Stall DONE
-dens_stall = 0.060809; % Raymer 5.3.2 hot day in Denver (5,000 ft)
-WS_stall = ((V_stall^2)*dens_stall*Clmax_land)/(2*g);
+WS_stall = ((V_stall^2)*airDens_sli*Clmax_land)/(2*g);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Take-off Parameter DONE
 % (W/S) = (TOP)*sigma*Cl_TO*(hp/W)
-% TOP = 200; % Raymer fig 5.4 for 1800 ish with 50 obstacle
+TOP = 250;
 WS = linspace(1,200);
 HPW_takeoff = @(ws) (TOP * sigma * Clmax_to)./ws;
 
@@ -72,14 +68,14 @@ HPW_takeoff = @(ws) (TOP * sigma * Clmax_to)./ws;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% FIELD LENGTHS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% mum = 0.5
-% S_A = 1800;
-% kt = @(mu) (550*eta)/(1.2*V_cruise*.7*WP_guess) - mu
-% ka = @(mu) ((airDens_fi/g)/(2*WS_guess))*(mu*Clmax_to - C_D0 - k*Clmax_to^2)
-% disp(kt(mum))
-% disp(ka(mum))
-% s_g =  (1/(2*g*ka(mum))) * log((kt(mum) + ka(mum)*(1.2*V_stall))/(kt(mum) + ka(mum)*0))
-% %test = s_g(0.03)
+mum = 0.5
+S_A = 1800;
+kt = @(mu) (550*eta)/(1.2*V_cruise*.7*WP_guess) - mu
+ka = @(mu) ((airDens_fi/g)/(2*WS_guess))*(mu*Clmax_to - C_D0 - k*Clmax_to^2)
+disp(kt(mum))
+disp(ka(mum))
+s_g =  (1/(2*g*ka(mum))) * log((kt(mum) + ka(mum)*(1.2*V_stall))/(kt(mum) + ka(mum)*0))
+test = s_g(0.03)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%q%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -90,10 +86,8 @@ HPW_climb = @(ws) (550*eta)*(1/(sind(gamma) + (C_D0/(.5*Clmax_to))))...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Cruise-performance DONE
 V_cruise = V_cruise * 1.68781; %convert to ft/s
-HPW_cruise = @(ws) ((550*eta)./(0.5*(airDens_ci/g)*V_cruise^3*C_D0./ws ...
+HPW_cruise = @(ws) (550./(0.5*(airDens_ci/g)*V_cruise^3*C_D0./ws ...
      + k /(0.5*(airDens_ci/g)*V_cruise) .* ws))/1.016;
-% HPW_cruise = @(ws) 1.016/((550./(0.5*(airDens_ci/g)*V_cruise^3*C_D0./ws ...
-%      + k /(0.5*(airDens_ci/g)*V_cruise) .* ws)));
     % I added a /1.016 to the whole thing to account for the power draw
     % from the electrical systems based on a piper plane. Sourcing is in
     % the weights folder in the drive
@@ -106,12 +100,10 @@ HPW_turning_max = @(ws) (550*eta)./(V_cruise*(((n_max^2 * k * ws)./(q_c))...
 HPW_turning_min = @(ws) (550*eta)./(V_cruise*(((n_min^2 * k * ws)./(q_c))...
     + ((q_c*C_D0)./(ws))));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Loiter / Endurance DONE HARDCODED 0.7 AS LOITER PROP EFFICIENCY
-% HPW_endurance = @(ws) ((3*C_D0/k)^(3/4))*(sqrt(airDens_li)*550)./...
-%     (sqrt(2*ws)*4*C_D0*sqrt(g));
-% V_loiter        =   sqrt((2*ws*g) / (airDens_li) * sqrt( k / (3*C_D0) ))
-HPW_endurance = @(ws) LDL .* 1./(sqrt((2*ws*g) ./ (airDens_li) .* sqrt( k / (3*C_D0) ))) ...
-    .*0.7.*550;
+% Endurance DONE
+HPW_endurance = @(ws) ((3*C_D0/k)^(3/4))*(sqrt(airDens_ci)*550)./...
+    (sqrt(2*ws)*4*C_D0*sqrt(g));
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Landing DONE
 WS_landing = ((sqrt(L_landing/0.265)*1.687)^2)*...
@@ -170,7 +162,7 @@ alpha(0.5); % transparency
 title('Constraint Plane (W/P - W/S)');
 xlabel('Wing Loading [W_g/S], lb/ft^2');
 ylabel('Loading Power [W_g/P_{hp}]');
-legend('Stall', 'Landing','Loiter Endurance', 'Cruise',...
+legend('Stall', 'Landing','Endurance', 'Cruise',...
     'n_{max}','n_{min}','Takeoff','Climb');
 
 
