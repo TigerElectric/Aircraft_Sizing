@@ -55,12 +55,12 @@ ylabel('Thrust Loading [T_0/W_g]');
 hold on;
 % Plotted later for cosmetic reasons
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Stall DONE
+% Stall DONE 
 dens_stall = 0.060809; % Raymer 5.3.2 hot day in Denver (5,000 ft)
 WS_stall = ((V_stall^2)*dens_stall*Clmax_land)/(2*g);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Take-off Parameter DONE
+% Take-off Parameter DONE Raymer 5.3.3
 % (W/S) = (TOP)*sigma*Cl_TO*(hp/W)
 % TOP = 200; % Raymer fig 5.4 for 1800 ish with 50 obstacle
 WS = linspace(1,200);
@@ -83,23 +83,25 @@ HPW_takeoff = @(ws) (TOP * sigma * Clmax_to)./ws;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%q%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Climb-performance DONE
+% Climb-performance DONE hamburg source plus Raymer 17.3.1 for V clmib
 gamma = asind(dHdt/V_climb);
-HPW_climb = @(ws) (550*eta)*(1/(sind(gamma) + (C_D0/(.5*Clmax_to))))...
+
+HPW_climb = @(ws) (550*eta)*(1/(sind(gamma) + ((C_D0 + Clmax_climb.^2*k)/(Clmax_climb))))...
     *sqrt((airDens_ci*Clmax_climb)./(2*g.*ws));
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Cruise-performance DONE
+% Cruise-performance DONE Raymer Eqn 17.16 (and yes, it is all in a denominator) 
 V_cruise = V_cruise * 1.68781; %convert to ft/s
 HPW_cruise = @(ws) ((550*eta)./(0.5*(airDens_ci/g)*V_cruise^3*C_D0./ws ...
      + k /(0.5*(airDens_ci/g)*V_cruise) .* ws))/1.016;
-% HPW_cruise = @(ws) 1.016/((550./(0.5*(airDens_ci/g)*V_cruise^3*C_D0./ws ...
-%      + k /(0.5*(airDens_ci/g)*V_cruise) .* ws)));
+
     % I added a /1.016 to the whole thing to account for the power draw
     % from the electrical systems based on a piper plane. Sourcing is in
     % the weights folder in the drive
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Turning Flight DONE
+% Turning Flight DONE Raymer 17.4.2 i think
 q_c = dynamic_pressure(airDens_ci, V_cruise, g);
 HPW_turning_max = @(ws) (550*eta)./(V_cruise*(((n_max^2 * k * ws)./(q_c))...
     + ((q_c*C_D0)./(ws))));
@@ -110,10 +112,11 @@ HPW_turning_min = @(ws) (550*eta)./(V_cruise*(((n_min^2 * k * ws)./(q_c))...
 % HPW_endurance = @(ws) ((3*C_D0/k)^(3/4))*(sqrt(airDens_li)*550)./...
 %     (sqrt(2*ws)*4*C_D0*sqrt(g));
 % V_loiter        =   sqrt((2*ws*g) / (airDens_li) * sqrt( k / (3*C_D0) ))
+% Raymer 17.2.9
 HPW_endurance = @(ws) LDL .* 1./(sqrt((2*ws*g) ./ (airDens_li) .* sqrt( k / (3*C_D0) ))) ...
     .*0.7.*550;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Landing DONE
+% Landing DONE ppt source 
 WS_landing = ((sqrt(L_landing/0.265)*1.687)^2)*...
     (airDens_sli/g*Clmax_land/2);
 
