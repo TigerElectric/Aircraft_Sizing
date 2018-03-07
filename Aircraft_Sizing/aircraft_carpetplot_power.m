@@ -84,10 +84,16 @@ HPW_takeoff = @(ws) (TOP * sigma * Clmax_to)./ws;
 
 %%%%%%%%%%%%%%%%%%%%%%%%q%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Climb-performance DONE hamburg source plus Raymer 17.3.1 for V clmib
-gamma = asind(dHdt/V_climb);
+% gamma = asind(dHdt/V_climb);
+% V_climb =  sqrt((2*g.*ws)./(airDens_ci.*Clmax_climb)) Raymer 17.3.1
+% gamma = asind(dHdt./sqrt((2*g.*ws)./(airDens_ci.*Clmax_climb)))
+% I integrated Raymers equation for the velocity of climbing with the
+% equation both bernardo and I derived (I have it in my notebook) from the
+% hamburg source
 
-HPW_climb = @(ws) (550*eta)*(1/(sind(gamma) + ((C_D0 + Clmax_climb.^2*k)/(Clmax_climb))))...
-    *sqrt((airDens_ci*Clmax_climb)./(2*g.*ws));
+HPW_climb = @(ws) (550*eta).*(1./(sind(asind(dHdt./sqrt((2*g.*ws)./(airDens_ci.*Clmax_climb))))...
+    + ((C_D0 +Clmax_climb^2*k)./(Clmax_climb))))...
+    .*sqrt((airDens_ci.*Clmax_climb)./(2*g.*ws));
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
